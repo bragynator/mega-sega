@@ -11,3 +11,26 @@
 .fighter-preview___left {
   align-items: flex-start;
 }
+
+.fighter-preview___right img,
+.fighter-preview___left img {
+  max-height: 300px;
+}
+.fighter-preview___right img {
+  transform: scaleX(-1);
+}
+
+.fighterParams {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fighterParams__item {
+  color: black;
+  -webkit-text-fill-color: white;
+  -webkit-text-stroke-width: 1px;
+  font-size: 20px;
+  font-family: 'Arial Black';
+  font-weight: 700;
+}
