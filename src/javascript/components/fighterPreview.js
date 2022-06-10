@@ -17,7 +17,6 @@ export function createFighterPreview(fighter, position) {
   });
 
   const fighterParamsItems = [];
-
   Object.keys(fighter).forEach((key) => {
     if (key === '_id' || key === 'source') {
       return;
@@ -30,7 +29,6 @@ export function createFighterPreview(fighter, position) {
     fighterParamsItem.textContent = `${key[0].toUpperCase() + key.slice(1)}: ${fighter[key]}`;
     fighterParamsItems.push(fighterParamsItem);
   });
-
   fighterParams.append(...fighterParamsItems);
   fighterElement.append(fighterParams);
 

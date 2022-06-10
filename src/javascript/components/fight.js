@@ -1,41 +1,127 @@
 import { controls } from '../../constants/controls';
 
 export async function fight(firstFighter, secondFighter) {
-  let { name: firstFighterName, health: firstFighterHealth } = firstFighter;
-  let { name: secondFighterName, health: secondFighterHealth } = secondFighter;
+  let { health: firstFighterHealth } = firstFighter;
+  let { health: secondFighterHealth } = secondFighter;
 
-  document.addEventListener('keydown', (e) => console.log(e.code));
+  const firstFighterHealthBar = document.querySelector('#left-fighter-indicator');
+  const secondFighterHealthBar = document.querySelector('#right-fighter-indicator');
 
-  let i = 1;
+  return await new Promise((resolve) => {
+    // resolve the promise with the winner when fight is over
+    document.addEventListener('keydown', logKeyDown);
+    document.addEventListener('keyup', logKeyUp);
 
-  while (firstFighterHealth > 0 && secondFighterHealth > 0) {
-    console.log('round - ', i);
+    let firstFighterBlock = false;
+    let secondFighterBlock = false;
 
-    if (i % 2 === 1) {
-      const resDmg = await getDamage(firstFighter, secondFighter);
-      console.log('result damage - ', resDmg);
-      i += 1;
-      secondFighterHealth -= resDmg;
-      console.log('secondFighterHealth - ', secondFighterHealth);
-      continue;
+    let firstFighterCritCombination = new Set();
+    let secondFighterCritCombination = new Set();
+    let firstFighterCritTime = 0;
+    let secondFighterCritTime = 0;
+
+    function logKeyDown(e) {
+      if (e.code === controls.PlayerTwoBlock) {
+        secondFighterBlock = true;
+      }
+
+      if (e.code === controls.PlayerOneBlock) {
+        firstFighterBlock = true;
+      }
+
+      if (!firstFighterBlock) {
+        if (e.code === controls.PlayerOneAttack) {
+          if (!secondFighterBlock) {
+            secondFighterHealth -= getHitPower(firstFighter);
+            secondFighterHealthBar.style.width = calculateHealthBarWidth(secondFighterHealth, secondFighter) + '%';
+          } else {
+            secondFighterHealth -= getDamage(firstFighter, secondFighter);
+            secondFighterHealthBar.style.width = calculateHealthBarWidth(secondFighterHealth, secondFighter) + '%';
+          }
+        }
+      }
+
+      if (!secondFighterBlock) {
+        if (e.code === controls.PlayerTwoAttack) {
+          if (!firstFighterBlock) {
+            firstFighterHealth -= getHitPower(secondFighter);
+            firstFighterHealthBar.style.width = calculateHealthBarWidth(firstFighterHealth, firstFighter) + '%';
+          } else {
+            firstFighterHealth -= getDamage(secondFighter, firstFighter);
+            firstFighterHealthBar.style.width = calculateHealthBarWidth(firstFighterHealth, firstFighter) + '%';
+          }
+        }
+      }
+
+      const [firstCritKeyFirstFighter, secondCritKeyFirstFighter, thirdCritKeyFirstFighter] =
+        controls.PlayerOneCriticalHitCombination;
+
+      if (
+        e.code === firstCritKeyFirstFighter ||
+        e.code === secondCritKeyFirstFighter ||
+        e.code === thirdCritKeyFirstFighter
+      ) {
+        let currentTime = Date.now();
+
+        if (currentTime - firstFighterCritTime > 10000) {
+          firstFighterCritCombination.add(e.code);
+
+          if (firstFighterCritCombination.size === 3) {
+            secondFighterHealth -= 2 * firstFighter.attack;
+            secondFighterHealthBar.style.width = calculateHealthBarWidth(secondFighterHealth, secondFighter) + '%';
+            firstFighterCritCombination = new Set();
+            firstFighterCritTime = Date.now();
+          }
+        }
+      }
+
+      const [firstCritKeySecondFighter, secondCritKeySecondFighter, thirdCritKeySecondFighter] =
+        controls.PlayerTwoCriticalHitCombination;
+
+      if (
+        e.code === firstCritKeySecondFighter ||
+        e.code === secondCritKeySecondFighter ||
+        e.code === thirdCritKeySecondFighter
+      ) {
+        let currentTime = Date.now();
+
+        if (currentTime - secondFighterCritTime > 10000) {
+          secondFighterCritCombination.add(e.code);
+
+          if (secondFighterCritCombination.size === 3) {
+            firstFighterHealth -= 2 * secondFighter.attack;
+            firstFighterHealthBar.style.width = calculateHealthBarWidth(firstFighterHealth, firstFighter) + '%';
+            secondFighterCritCombination = new Set();
+            secondFighterCritTime = Date.now();
+          }
+        }
+      }
+
+      console.log(firstFighterHealth, secondFighterHealth);
+
+      if (firstFighterHealth <= 0 || secondFighterHealth <= 0) {
+        document.removeEventListener('keydown', logKeyDown);
+        document.removeEventListener('keyup', logKeyUp);
+        firstFighterHealth <= 0
+          ? (firstFighterHealthBar.style.width = '0%')
+          : (secondFighterHealthBar.style.width = '0%');
+        firstFighterHealth <= 0 ? resolve(secondFighter) : resolve(firstFighter);
+      }
     }
 
-    const resDmg = await getDamage(secondFighter, firstFighter);
-    console.log('result damage - ', resDmg);
-    i += 1;
-    firstFighterHealth -= resDmg;
-    console.log('firstFighterHealth - ', firstFighterHealth);
-  }
+    function logKeyUp(e) {
+      if (e.code === controls.PlayerTwoBlock) {
+        secondFighterBlock = false;
+      }
 
-  const winner = firstFighterHealth > 0 ? firstFighter : secondFighter;
-
-  return new Promise((resolve) => {
-    // resolve the promise with the winner when fight is over
-    resolve(winner);
+      if (e.code === controls.PlayerOneBlock) {
+        firstFighterBlock = false;
+      }
+    }
   });
 }
 
-export async function getDamage(attacker, defender) {
+export function getDamage(attacker, defender) {
   // return damage
   const attack = getHitPower(attacker);
   const block = getBlockPower(defender);
@@ -43,7 +129,6 @@ export async function getDamage(attacker, defender) {
   if (attack <= block) {
     return 0;
   }
-
   return attack - block;
 }
 
@@ -51,7 +136,6 @@ export function getHitPower(fighter) {
   // return hit power
   const { attack } = fighter;
   const criticalHitChance = Math.random() + 1;
-  console.log('attack - ', attack * criticalHitChance);
   return attack * criticalHitChance;
 }
 
@@ -59,11 +143,10 @@ export function getBlockPower(fighter) {
   // return block power
   const { defense } = fighter;
   const dodgeChance = Math.random() + 1;
-  console.log('defense - ', defense * dodgeChance);
   return defense * dodgeChance;
 }
 
-// async function pressedKey(event) {
-//   console.log(event.code);
-//   return event.code;
-// }
+function calculateHealthBarWidth(currentHealth, fighter) {
+  const { health } = fighter;
+  return (currentHealth * 100) / health;
+}
